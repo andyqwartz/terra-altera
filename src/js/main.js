@@ -328,27 +328,46 @@ function buildStandaloneSVG(scale = 1) {
   const [lam, phi] = state.rotation;
   proj.rotate([lam, phi, state.roll]);
 
-  // Tight viewBox: the sphere's actual bbox, so the export IS the map (no dead band).
-  const spherePath = d3.geoPath(proj)({ type: "Sphere" }) || "";
-  let minX = 0, minY = 0, vbW = WIDTH, vbH = HEIGHT;
-  const nums = spherePath.match(/-?\d+\.?\d*/g);
-  if (nums && nums.length >= 4) {
-    let minX2 = Infinity, minY2 = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (let i = 0; i < nums.length; i += 2) {
-      const x = +nums[i], y = +nums[i + 1];
-      if (x < minX2) minX2 = x; if (x > maxX) maxX = x;
-      if (y < minY2) minY2 = y; if (y > maxY) maxY = y;
+  // Robust planar bounds via d3 (never parse the path string: scientific
+  // notation like 2.8e-14 breaks naive x/y pairing and corrupts the frame).
+  // Mid-morph, lerped raws fold: land spills PAST the Sphere outline's bbox
+  // (measured up to ~240px at t=0.5) → frame = union of everything drawn.
+  const gp0 = d3.geoPath(proj);
+  const boxes = [gp0.bounds({ type: "Sphere" })];
+  if (state.graticule) {
+    const bg = gp0.bounds(d3.geoGraticule10());
+    if (isFinite(bg[0][0])) boxes.push(bg);
+  }
+  if (world) {
+    for (const f of world.countries) {
+      const b = gp0.bounds(f);
+      if (isFinite(b[0][0])) boxes.push(b);
     }
-    minX = minX2; minY = minY2;
-    vbW = Math.max(10, maxX - minX2);
-    vbH = Math.max(10, maxY - minY2);
-  } else { minX = 0; minY = 0; }
+  }
+  let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+  for (const b of boxes) {
+    bx0 = Math.min(bx0, b[0][0]); by0 = Math.min(by0, b[0][1]);
+    bx1 = Math.max(bx1, b[1][0]); by1 = Math.max(by1, b[1][1]);
+  }
+  let mapW = WIDTH, mapH = HEIGHT, offX = 0, offY = 0;
+  if (isFinite(bx0) && isFinite(bx1)) {
+    mapW = Math.max(10, bx1 - bx0);
+    mapH = Math.max(10, by1 - by0);
+    offX = bx0; offY = by0;
+  }
 
-  const W = Math.round(vbW * scale), H = Math.round(vbH * scale);
+  // Poster composition: title band on top, map centered with even margins.
+  const S = scale;
+  const TOP = 76 * S, SIDE = 24 * S, BOTTOM = 24 * S;
+  const W = Math.round(mapW * S) + SIDE * 2;
+  const H = Math.round(mapH * S) + TOP + BOTTOM;
 
-  // Scale translate/scale for export size.
-  proj.translate([(proj.translate()[0] - minX) * scale, (proj.translate()[1] - minY) * scale]);
-  proj.scale(proj.scale() * scale);
+  // Re-map the projection so the map origin lands at (SIDE, TOP), then scale.
+  proj.translate([
+    (proj.translate()[0] - offX) * S + SIDE,
+    (proj.translate()[1] - offY) * S + TOP
+  ]);
+  proj.scale(proj.scale() * S);
 
   const path = d3.geoPath(proj);
   const parts = [];
@@ -377,12 +396,12 @@ function buildStandaloneSVG(scale = 1) {
   const info = PROJECTION_INFO[currentProjKey];
   const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
   parts.push(
-    `<text x="${18 * scale}" y="${42 * scale}" font-family="Syne, sans-serif" font-weight="800" font-size="${21 * scale}" letter-spacing="${0.18 * 21 * scale}" fill="${c.ink}">${esc(info.label.toUpperCase())}</text>`,
-    `<text x="${18 * scale}" y="${62 * scale}" font-family="Georgia, serif" font-style="italic" font-size="${12.5 * scale}" fill="${c.inkDim}">${esc(info.kind + (state.roll === 180 ? " · SOUTH\u2191" : ""))}</text>`,
+    `<text x="${SIDE}" y="${34 * S}" font-family="Syne, sans-serif" font-weight="800" font-size="${21 * S}" letter-spacing="${0.18 * 21 * S}" fill="${c.ink}">${esc(info.label.toUpperCase())}</text>`,
+    `<text x="${SIDE}" y="${58 * S}" font-family="Georgia, serif" font-style="italic" font-size="${12.5 * S}" fill="${c.inkDim}">${esc(info.kind + (state.roll === 180 ? " · SOUTH\u2191" : ""))}</text>`,
     `</svg>`
   );
 
-  return { xml: parts.join("\n"), width: W, height: H };
+  return { xml: parts.join("\n"), width: W, height: H, mapRect: { x: SIDE, y: TOP, w: Math.round(mapW * S), h: Math.round(mapH * S) } };
 }
 
 function exportSVG() {
