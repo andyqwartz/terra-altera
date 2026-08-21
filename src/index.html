@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SERENDIPPO · Atlas Décolonial</title>
-<meta name="description" content="Visualiseur cartographique à projections alternatives — décoloniser le regard.">
+<title>SERENDIPPO · Decolonial Atlas</title>
+<meta name="description" content="World map viewer with alternative projections — unfold the world, shift the gaze.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -13,30 +13,29 @@
 <body>
 
 <header class="brand">
-  <h1>ATLAS<span class="accent">·</span>DÉCOLONIAL</h1>
-  <p class="tagline">déplier le monde // changer de regard</p>
+  <h1>ATLAS<span class="accent">·</span>DECOLONIAL</h1>
+  <p class="tagline">unfold the world // shift the gaze</p>
 </header>
 
 <svg id="map" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid meet"
-     role="img" aria-label="Carte du monde interactive"></svg>
+     role="img" aria-label="Interactive world map"></svg>
 
-<!-- Panneau latéral droit -->
-<nav class="toolbar" aria-label="Contrôles carte">
+<nav class="toolbar" aria-label="Map controls">
   <div class="tool-group">
     <label class="tool-label" for="proj-select">Projection</label>
     <select id="proj-select" class="tool-select">
       <option value="equalEarth">Equal Earth</option>
-      <option value="hoboDyer">Hobo-Dyer (37,5°)</option>
+      <option value="hoboDyer">Hobo-Dyer (37.5°)</option>
       <option value="gallPeters">Gall-Peters (45°)</option>
-      <option value="equirectangular">Équirectangulaire</option>
+      <option value="equirectangular">Equirectangular</option>
       <option value="authaGraph">AuthaGraph* (Imago)</option>
     </select>
   </div>
 
-  <button id="btn-southup" class="tool-btn" title="Inverser : Sud en haut" aria-pressed="false">
+  <button id="btn-southup" class="tool-btn" title="Flip: South up" aria-pressed="false">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
       <circle cx="8" cy="8" r="6.2"/><path d="M8 1.8v12.4M5.2 4.6l2.8-2.8 2.8 2.8"/>
-    </svg><span>Sud ↑</span>
+    </svg><span>South ↑</span>
   </button>
 
   <button id="btn-graticule" class="tool-btn active" title="Graticule" aria-pressed="true">
@@ -45,26 +44,25 @@
     </svg><span>Graticule</span>
   </button>
 
-  <button id="btn-export" class="tool-btn" title="Exporter en SVG vectoriel">
+  <button id="btn-export" class="tool-btn" title="Export as vector SVG">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
       <path d="M8 2v8m0 0l-3-3m3 3l3-3M3 13h10"/>
     </svg><span>Export SVG</span>
   </button>
 </nav>
 
-<!-- Barre de morphing basse -->
 <div class="morphbar">
   <span class="morph-label">GLOBE</span>
   <input id="morph-slider" type="range" min="0" max="100" value="0" step="0.5"
-         aria-label="Interpolation globe vers projection">
-  <span class="morph-label">CARTE</span>
-  <button id="btn-play" class="play-btn" title="Animer la transition">
+         aria-label="Globe to projection interpolation">
+  <span class="morph-label">MAP</span>
+  <button id="btn-play" class="play-btn" title="Animate transition">
     <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5l9 5.5-9 5.5z"/></svg>
   </button>
 </div>
 
 <footer class="credit">
-  <span>*Imago ≈ AuthaGraph (k=0.68) — données Natural Earth / world-atlas (domaine public) — d3-geo · d3-geo-projection · d3-geo-polygon (ISC)</span>
+  <span>*Imago ≈ AuthaGraph (k=0.68) — data: Natural Earth / world-atlas (public domain) — d3-geo · d3-geo-projection · d3-geo-polygon (ISC)</span>
 </footer>
 
 <script src="lib/d3.v7.min.js"></script>
