@@ -33,6 +33,19 @@ const RAW = {
   authaGraph:      () => d3.geoImagoRaw(0.68),
 };
 
+// Folded/polyhedral projections need a polygon preclip along their outline
+// (the same one the library's own factories apply). Keyed by projection key.
+const PRECLIPS = {
+  authaGraph: () => {
+    const o = -Math.atan(1 / Math.sqrt(2)) / DEG, P = 1e-6;
+    return d3.geoClipPolygon({
+      type: "Polygon",
+      coordinates: [[[-180 + P, o + P], [0, 90], [180 - P, o + P],
+                     [180 - P, o - P], [-180 + P, o - P], [-180 + P, o + P]]],
+    });
+  },
+};
+
 let currentProjKey = "equalEarth";
 let currentRaw = RAW.equalEarth();
 
@@ -72,6 +85,12 @@ function projectionAtT(raw0, raw1, t) {
 function currentCompositeRaw() {
   // During crossfade, currentRaw is already a composite closure; otherwise identity.
   return currentRaw;
+}
+
+// Preclip factory for the CURRENT projection (undefined = none needed).
+function currentPreclip() {
+  const f = PRECLIPS[currentProjKey];
+  return f ? f() : undefined;
 }
 
 // Clip choreography: opens linearly and reaches EXACTLY 180° at α=0.85.
@@ -139,6 +158,13 @@ function buildProjection() {
   const fitted = fitRaw(currentCompositeRaw());
   const proj = d3.geoProjection(currentCompositeRaw())
     .scale(fitted.scale).translate(fitted.translate).precision(0.2);
+  // Folded/polyhedral raws (Imago/AuthaGraph) need their outline preclip:
+  // without it, countries crossing the internal fold seams are drawn with
+  // teleport lines across the canvas ("dolls" artifacts Andy reported).
+  // NOTE: only call preclip() when a custom clip exists — preclip(undefined)
+  // would CLEAR d3's default antimeridian clipping and break flat maps.
+  const preclipFactory = PRECLIPS[currentProjKey];
+  if (preclipFactory) proj.preclip(preclipFactory());
   const [lam, phi] = state.rotation;
   proj.rotate([lam, phi, state.roll]);
   return proj;
