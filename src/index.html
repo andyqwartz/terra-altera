@@ -33,10 +33,14 @@
   </div>
 </header>
 
-<!-- Map -->
+<!-- Map + reserved caption band (HUD lives BELOW the drawing, never on it) -->
 <main class="stage">
   <svg id="map" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid meet"
        role="img" aria-label="Interactive world map"></svg>
+  <div class="hud" id="hud" aria-live="polite">
+    <span class="hud-title" id="hud-title"></span>
+    <span class="hud-sub" id="hud-sub"></span>
+  </div>
 </main>
 
 <!-- Right panel: everything lives here -->
