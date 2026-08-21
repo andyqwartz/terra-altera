@@ -70,11 +70,13 @@ function currentCompositeRaw() {
   return currentRaw;
 }
 
-// Clip choreography: the veil opens linearly across the WHOLE morph (v0.3 feel),
-// but caps at 179.999° so we never jump clip->null (that jump flashed a sliver
-// of antimeridian geometry at the end). Sub-pixel loss, invisible.
+// Clip choreography: opens linearly and reaches EXACTLY 180° at α=0.85.
+// A 180° clip excludes only the antipode point = clips nothing, renders
+// identically to no-clip. Past 0.85 the veil is fully open, so no clip arc
+// can ever cross the screen as a straight line in the final frames
+// (v1.2's 179.9° cap kept slicing a sliver -> visible edge until the end).
 function clipForAlpha(a) {
-  return Math.min(179.999, 90 + 90 * a);
+  return 90 + 90 * Math.min(1, a / 0.85);
 }
 
 /* ---------- Data ---------- */
@@ -312,7 +314,6 @@ function toast(msg) {
 
 function buildStandaloneSVG(scale = 1) {
   const c = themeColors();
-  const W = WIDTH * scale, H = HEIGHT * scale;
 
   // Fresh projection fitted to export dimensions.
   let proj;
@@ -327,9 +328,26 @@ function buildStandaloneSVG(scale = 1) {
   const [lam, phi] = state.rotation;
   proj.rotate([lam, phi, state.roll]);
 
-  // Scale translate for export size (fit was computed at base size).
-  const tr = proj.translate();
-  proj.translate([tr[0] * scale, tr[1] * scale]);
+  // Tight viewBox: the sphere's actual bbox, so the export IS the map (no dead band).
+  const spherePath = d3.geoPath(proj)({ type: "Sphere" }) || "";
+  let minX = 0, minY = 0, vbW = WIDTH, vbH = HEIGHT;
+  const nums = spherePath.match(/-?\d+\.?\d*/g);
+  if (nums && nums.length >= 4) {
+    let minX2 = Infinity, minY2 = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (let i = 0; i < nums.length; i += 2) {
+      const x = +nums[i], y = +nums[i + 1];
+      if (x < minX2) minX2 = x; if (x > maxX) maxX = x;
+      if (y < minY2) minY2 = y; if (y > maxY) maxY = y;
+    }
+    minX = minX2; minY = minY2;
+    vbW = Math.max(10, maxX - minX2);
+    vbH = Math.max(10, maxY - minY2);
+  } else { minX = 0; minY = 0; }
+
+  const W = Math.round(vbW * scale), H = Math.round(vbH * scale);
+
+  // Scale translate/scale for export size.
+  proj.translate([(proj.translate()[0] - minX) * scale, (proj.translate()[1] - minY) * scale]);
   proj.scale(proj.scale() * scale);
 
   const path = d3.geoPath(proj);
@@ -359,37 +377,38 @@ function buildStandaloneSVG(scale = 1) {
   const info = PROJECTION_INFO[currentProjKey];
   const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
   parts.push(
-    `<text x="${18 * scale}" y="${(HEIGHT - 42) * scale}" font-family="Syne, sans-serif" font-weight="800" font-size="${21 * scale}" letter-spacing="${0.18 * 21 * scale}" fill="${c.ink}">${esc(info.label.toUpperCase())}</text>`,
-    `<text x="${18 * scale}" y="${(HEIGHT - 22) * scale}" font-family="Georgia, serif" font-style="italic" font-size="${12.5 * scale}" fill="${c.inkDim}">${esc(info.kind + (state.roll === 180 ? " · SOUTH\u2191" : ""))}</text>`,
+    `<text x="${18 * scale}" y="${42 * scale}" font-family="Syne, sans-serif" font-weight="800" font-size="${21 * scale}" letter-spacing="${0.18 * 21 * scale}" fill="${c.ink}">${esc(info.label.toUpperCase())}</text>`,
+    `<text x="${18 * scale}" y="${62 * scale}" font-family="Georgia, serif" font-style="italic" font-size="${12.5 * scale}" fill="${c.inkDim}">${esc(info.kind + (state.roll === 180 ? " · SOUTH\u2191" : ""))}</text>`,
     `</svg>`
   );
 
-  return parts.join("\n");
+  return { xml: parts.join("\n"), width: W, height: H };
 }
 
 function exportSVG() {
-  const xml = buildStandaloneSVG(1);
+  const { xml } = buildStandaloneSVG(1);
   downloadBlob(new Blob([xml], { type: "image/svg+xml" }), exportName("svg"));
   toast("SVG exported");
 }
 
 async function exportPNG(scale) {
   try {
-    const xml = buildStandaloneSVG(scale);
-    const url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
+    const { xml, width, height } = buildStandaloneSVG(scale);
+    // data URI rasterization — proven reliable in Chrome (blob URLs are not).
+    const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
     const img = new Image();
+    img.decoding = "sync";
     await new Promise((resolve, reject) => {
       img.onload = resolve;
       img.onerror = () => reject(new Error("SVG rasterization failed"));
       img.src = url;
     });
-    // Use intrinsic size when available (Firefox needs explicit canvas dims).
+    try { await img.decode(); } catch {}
     const canvas = document.createElement("canvas");
-    canvas.width = WIDTH * scale;
-    canvas.height = HEIGHT * scale;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    URL.revokeObjectURL(url);
+    ctx.drawImage(img, 0, 0, width, height);
     canvas.toBlob((blob) => {
       if (!blob) { toast("PNG export failed"); return; }
       downloadBlob(blob, exportName("png"));
