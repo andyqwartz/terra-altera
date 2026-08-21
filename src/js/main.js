@@ -9,6 +9,7 @@
 const WIDTH = 1200;
 const HEIGHT = 700;
 const PAD = 30;
+const CAPTION_BAND = 64; // bottom lane reserved for the projection label (never drawn over)
 const DEG = Math.PI / 180;
 
 const state = {
@@ -40,8 +41,11 @@ const lerp1 = (a, b, t) => a * (1 - t) + b * t;
 const lerp2 = ([a0, b0], [a1, b1], t) => [a0 + (a1 - a0) * t, b0 + (b1 - b0) * t];
 
 function fitRaw(raw) {
+  // A caption lane is reserved along the bottom (CAPTION_BAND px): every
+  // projection is fitted ABOVE it, so the bottom-left label never sits on
+  // the drawing — whatever the projection's shape (oval, rectangle, folds).
   const p = d3.geoProjection(raw).fitExtent(
-    [[PAD, PAD], [WIDTH - PAD, HEIGHT - PAD]],
+    [[PAD, PAD], [WIDTH - PAD, HEIGHT - PAD - CAPTION_BAND]],
     { type: "Sphere" }
   );
   return { scale: p.scale(), translate: p.translate() };
@@ -177,6 +181,8 @@ function render() {
     .attr("d", (d) => safePath(path, d));
 
   const info = PROJECTION_INFO[currentProjKey];
+  // Bottom-left, original typography. The caption lane is guaranteed clear
+  // by the fit (CAPTION_BAND reserved below the drawing's extent).
   gMap.append("text")
     .attr("x", 18).attr("y", HEIGHT - 42)
     .attr("class", "hud-title")
