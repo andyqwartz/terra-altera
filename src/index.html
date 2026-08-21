@@ -78,14 +78,20 @@
   </section>
 
   <section class="pgroup">
-    <h2 class="ptitle">Export image</h2>
+    <h2 class="ptitle">Export</h2>
     <div class="exp-row">
-      <button class="exp-btn" data-png="1">PNG 1×</button>
-      <button class="exp-btn" data-png="2">PNG 2×</button>
-      <button class="exp-btn" data-png="4">PNG 4×</button>
+      <button id="btn-export-png" class="exp-btn">PNG</button>
+      <button id="btn-export-svg" class="exp-btn">SVG</button>
     </div>
-    <button id="btn-export-svg" class="svg-btn">Download vector SVG</button>
-    <p class="phint">Exports render a standalone document in the current theme.</p>
+    <div class="slider-row">
+      <span class="slbl">Resolution</span>
+      <select id="png-scale" class="psel psel-mini" aria-label="PNG export resolution">
+        <option value="1">1×</option>
+        <option value="2" selected>2×</option>
+        <option value="4">4×</option>
+      </select>
+    </div>
+    <p class="phint">Both render the current view in the current theme.</p>
   </section>
 
   <footer class="pfoot">

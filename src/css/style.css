@@ -248,27 +248,19 @@ body.focus .brand .tagline { visibility: hidden; }
   border: 1px solid var(--line);
   border-radius: 7px;
   font-family: inherit;
-  font-size: 0.68rem;
-  padding: 7px 0;
+  font-size: 0.72rem;
+  padding: 8px 0;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
   white-space: nowrap;
 }
 .exp-btn:hover { border-color: var(--accent); color: var(--accent); }
-.svg-btn {
-  width: 100%;
-  margin-top: 6px;
-  background: var(--surface-2);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  font-family: inherit;
-  font-size: 0.68rem;
-  padding: 7px 0;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+
+.psel-mini {
+  width: 74px;
+  padding: 5px 8px;
+  font-size: 0.72rem;
 }
-.svg-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 .pfoot {
   margin-top: auto;

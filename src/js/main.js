@@ -481,9 +481,9 @@ document.getElementById("rng-speed").addEventListener("input", (e) => {
 });
 
 document.getElementById("btn-export-svg").addEventListener("click", exportSVG);
-// PNG scale buttons ONLY (class exp-btn with data-png). The SVG button is .wide, no data-png.
-document.querySelectorAll(".exp-btn[data-png]").forEach((b) =>
-  b.addEventListener("click", () => exportPNG(+b.dataset.png)));
+document.getElementById("btn-export-png").addEventListener("click", () => {
+  exportPNG(+document.getElementById("png-scale").value);
+});
 
 /* Focus mode */
 document.getElementById("btn-focus").addEventListener("click", toggleFocus);
