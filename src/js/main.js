@@ -176,12 +176,17 @@ function render() {
     .attr("stroke-width", 0.6)
     .attr("d", (d) => safePath(path, d));
 
-  // HUD lives in the reserved caption band below the map (HTML, not SVG):
-  // updated on every render, so a projection change reflects immediately.
   const info = PROJECTION_INFO[currentProjKey];
-  document.getElementById("hud-title").textContent = info.label.toUpperCase();
-  document.getElementById("hud-sub").textContent =
-    info.kind + (state.roll === 180 ? " · SOUTH\u2191" : "");
+  gMap.append("text")
+    .attr("x", 18).attr("y", HEIGHT - 42)
+    .attr("class", "hud-title")
+    .attr("fill", c.ink)
+    .text(info.label.toUpperCase());
+  gMap.append("text")
+    .attr("x", 18).attr("y", HEIGHT - 22)
+    .attr("class", "hud-sub")
+    .attr("fill", c.inkDim)
+    .text(info.kind + (state.roll === 180 ? " · SOUTH↑" : ""));
 }
 
 function safePath(path, feature) {
