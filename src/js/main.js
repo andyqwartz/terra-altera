@@ -70,15 +70,14 @@ function currentCompositeRaw() {
   return currentRaw;
 }
 
-/* Veil = cross-fade, not a clip. Two layers share the same fitted frame:
-   the globe (FIXED 90° clip, never unrolled) fades OUT while the flat map
-   fades IN on top. No animated clip arc exists anywhere in this design, so
-   no straight edge can ever sweep the screen (structural guarantee, v1.6).
-   Staggered ramps: globe holds full until α=0.45 then dissolves by 0.80;
-   map starts fading in at α=0.10 and is full by 0.60 → both ends are pure. */
-function clamp01(x) { return Math.min(1, Math.max(0, x)); }
-function globeFade(a) { return 1 - clamp01((a - 0.45) / 0.35); }
-function mapFade(a) { return clamp01((a - 0.10) / 0.50); }
+// Clip choreography: opens linearly and reaches EXACTLY 180° at α=0.85.
+// A 180° clip excludes only the antipode point = clips nothing, renders
+// identically to no-clip. Past 0.85 the veil is fully open, so no clip arc
+// can ever cross the screen as a straight line in the final frames
+// (v1.2's 179.9° cap kept slicing a sliver -> visible edge until the end).
+function clipForAlpha(a) {
+  return 90 + 90 * Math.min(1, a / 0.85);
+}
 
 /* ---------- Data ---------- */
 let world = null;
@@ -123,41 +122,61 @@ function paintOceanStops() {
 
 const gMap = svg.append("g").attr("class", "map-root");
 
+function buildProjection() {
+  // Globe unroll: interpolate orthographic → current flat raw, refit per frame.
+  if (state.alpha < 0.999) {
+    const proj = projectionAtT(d3.geoOrthographicRaw, currentCompositeRaw(), state.alpha);
+    proj.clipAngle(clipForAlpha(state.alpha));
+    const [lam, phi] = state.rotation;
+    proj.rotate([lam, phi, state.roll]);
+    return proj;
+  }
+  // Flat: plain projection of the current raw, freshly fitted.
+  const fitted = fitRaw(currentCompositeRaw());
+  const proj = d3.geoProjection(currentCompositeRaw())
+    .scale(fitted.scale).translate(fitted.translate).precision(0.2);
+  const [lam, phi] = state.rotation;
+  proj.rotate([lam, phi, state.roll]);
+  return proj;
+}
+
 function render() {
   if (!world) return;
   const c = themeColors();
   paintOceanStops();
+  const proj = buildProjection();
+  const path = d3.geoPath(proj);
 
   gMap.selectAll("*").remove();
-  const info = PROJECTION_INFO[currentProjKey];
 
-  if (state.alpha < 0.999) {
-    // Two layers in the SAME fitted frame: globe fades out, flat map fades in on top.
-    const gf = globeFade(state.alpha);
-    if (gf > 0.001) {
-      const gproj = projectionAtT(d3.geoOrthographicRaw, currentCompositeRaw(), 0);
-      gproj.clipAngle(90);
-      const [lam, phi] = state.rotation;
-      gproj.rotate([lam, phi, state.roll]);
-      appendMapLayers(gMap, d3.geoPath(gproj), c, { opacity: gf });
-    }
-    const mf = mapFade(state.alpha);
-    if (mf > 0.001) {
-      const mproj = projectionAtT(d3.geoOrthographicRaw, currentCompositeRaw(), 1);
-      const [lam, phi] = state.rotation;
-      mproj.rotate([lam, phi, state.roll]);
-      appendMapLayers(gMap, d3.geoPath(mproj), c, { opacity: mf });
-    }
-  } else {
-    // Flat: plain projection of the current raw, freshly fitted.
-    const fitted = fitRaw(currentCompositeRaw());
-    const proj = d3.geoProjection(currentCompositeRaw())
-      .scale(fitted.scale).translate(fitted.translate).precision(0.2);
-    const [lam, phi] = state.rotation;
-    proj.rotate([lam, phi, state.roll]);
-    appendMapLayers(gMap, d3.geoPath(proj), c, {});
+  gMap.append("path")
+    .datum({ type: "Sphere" })
+    .attr("class", "sphere")
+    .attr("fill", "url(#ocean)")
+    .attr("stroke", c.accent)
+    .attr("stroke-width", 1)
+    .attr("d", path);
+
+  if (state.graticule) {
+    gMap.append("path")
+      .datum(d3.geoGraticule10())
+      .attr("class", "graticule")
+      .attr("stroke", c.graticule)
+      .attr("fill", "none")
+      .attr("stroke-width", 0.5)
+      .attr("d", path);
   }
 
+  gMap.append("g")
+    .selectAll("path")
+    .data(world.countries)
+    .join("path")
+    .attr("fill", c.landFill)
+    .attr("stroke", state.borders ? c.landStroke : "none")
+    .attr("stroke-width", 0.6)
+    .attr("d", (d) => safePath(path, d));
+
+  const info = PROJECTION_INFO[currentProjKey];
   gMap.append("text")
     .attr("x", 18).attr("y", HEIGHT - 42)
     .attr("class", "hud-title")
@@ -168,35 +187,6 @@ function render() {
     .attr("class", "hud-sub")
     .attr("fill", c.inkDim)
     .text(info.kind + (state.roll === 180 ? " · SOUTH↑" : ""));
-}
-
-// Sphere + graticule + countries for one projection path, as one layer group.
-function appendMapLayers(parent, path, c, { opacity = 1 } = {}) {
-  const g = parent.append("g").attr("opacity", opacity);
-  g.append("path")
-    .datum({ type: "Sphere" })
-    .attr("class", "sphere")
-    .attr("fill", "url(#ocean)")
-    .attr("stroke", c.accent)
-    .attr("stroke-width", 1)
-    .attr("d", path);
-  if (state.graticule) {
-    g.append("path")
-      .datum(d3.geoGraticule10())
-      .attr("class", "graticule")
-      .attr("stroke", c.graticule)
-      .attr("fill", "none")
-      .attr("stroke-width", 0.5)
-      .attr("d", path);
-  }
-  g.append("g")
-    .selectAll("path")
-    .data(world.countries)
-    .join("path")
-    .attr("fill", c.landFill)
-    .attr("stroke", state.borders ? c.landStroke : "none")
-    .attr("stroke-width", 0.6)
-    .attr("d", (d) => safePath(path, d));
 }
 
 function safePath(path, feature) {
@@ -238,7 +228,7 @@ function animateMorph(targetAlpha) {
     const t = Math.min((now - t0) / duration, 1);
     state.alpha = start + delta * EASE(t);
     slider.value = Math.round(state.alpha * 100);
-    render(); // render() re-fits every frame
+    render(); // buildProjection re-fits every frame
     if (t < 1) requestAnimationFrame(frame);
     else { state.animating = false; playBtn.disabled = false; syncURL(); }
   }
@@ -325,12 +315,11 @@ function toast(msg) {
 function buildStandaloneSVG(scale = 1) {
   const c = themeColors();
 
-  // Fresh projection fitted to export dimensions. Mid-morph, the export shows
-  // the flat map layer (the veil's incoming layer) — same as the on-screen
-  // dominant layer; no clip arc is ever rendered in this design.
+  // Fresh projection fitted to export dimensions.
   let proj;
   if (state.alpha < 0.999) {
-    proj = projectionAtT(d3.geoOrthographicRaw, currentCompositeRaw(), 1);
+    proj = projectionAtT(d3.geoOrthographicRaw, currentCompositeRaw(), state.alpha);
+    proj.clipAngle(clipForAlpha(state.alpha));
   } else {
     const f = fitRaw(currentCompositeRaw());
     proj = d3.geoProjection(currentCompositeRaw())
