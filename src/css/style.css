@@ -1,0 +1,233 @@
+/* SERENDIPPO · Atlas Décolonial — v0
+   Palette : violet #7e61d4 (signature SERENDIPPO-FOURIER) sur fond nuit */
+
+:root {
+  --violet: #7e61d4;
+  --violet-soft: rgba(126, 97, 212, 0.35);
+  --violet-dim: rgba(126, 97, 212, 0.12);
+  --bg: #0b0a12;
+  --bg-raise: #14121f;
+  --ink: #e8e5f2;
+  --ink-dim: #8a86a0;
+  --line: rgba(232, 229, 242, 0.14);
+  --font-display: "Syne", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  overflow: hidden;
+}
+
+body {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  grid-template-areas:
+    "brand"
+    "map"
+    "morphbar"
+    "credit";
+  height: 100vh;
+}
+
+/* ---------- Brand header ---------- */
+.brand {
+  grid-area: brand;
+  padding: 18px 24px 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.brand h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.2rem, 2.4vw, 1.7rem);
+  letter-spacing: 0.14em;
+}
+
+.brand .accent { color: var(--violet); }
+
+.brand .tagline {
+  color: var(--ink-dim);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+}
+
+/* ---------- Map ---------- */
+#map {
+  grid-area: map;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+#map.dragging { cursor: grabbing; }
+
+#map .country {
+  fill: var(--violet-dim);
+  stroke: var(--violet-soft);
+  stroke-width: 0.6;
+  transition: fill 0.3s;
+}
+#map .country:hover { fill: var(--violet-soft); }
+
+#map .graticule {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 0.5;
+}
+
+#map .sphere {
+  fill: rgba(126, 97, 212, 0.04);
+  stroke: var(--violet);
+  stroke-width: 1;
+}
+
+#map text {
+  fill: var(--ink-dim);
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+/* ---------- Toolbar ---------- */
+.toolbar {
+  position: fixed;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  backdrop-filter: blur(6px);
+}
+
+.tool-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-dim);
+  padding: 2px 4px;
+}
+
+.tool-select {
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.tool-select:focus { outline: 1px solid var(--violet); }
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tool-btn:hover { color: var(--ink); border-color: var(--violet-soft); }
+.tool-btn.active {
+  color: var(--violet);
+  border-color: var(--violet);
+  background: var(--violet-dim);
+}
+
+/* ---------- Morphbar ---------- */
+.morphbar {
+  grid-area: morphbar;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px 24px 6px;
+}
+
+.morph-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+}
+
+#morph-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: min(420px, 55vw);
+  height: 2px;
+  background: var(--line);
+  border-radius: 2px;
+  cursor: pointer;
+}
+#morph-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--violet);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--violet);
+}
+#morph-slider::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--violet);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--violet);
+}
+
+.play-btn {
+  display: grid;
+  place-items: center;
+  width: 32px; height: 32px;
+  background: var(--violet);
+  color: var(--bg);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.play-btn:hover { transform: scale(1.08); }
+.play-btn:disabled { opacity: 0.4; cursor: wait; }
+
+/* ---------- Credit ---------- */
+.credit {
+  grid-area: credit;
+  text-align: center;
+  padding: 4px 12px 10px;
+  font-size: 0.58rem;
+  color: var(--ink-dim);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+  .toolbar {
+    top: auto;
+    bottom: 64px;
+    right: 8px;
+    transform: none;
+  }
+  .tool-btn span { display: none; }
+  .morph-label { display: none; }
+  #morph-slider { width: 70vw; }
+}

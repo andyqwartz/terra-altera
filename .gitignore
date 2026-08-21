@@ -1,0 +1,16 @@
+# SERENDIPPO-DECOLONIAL-MAPS
+# Seul le code utilisé par le site est versionné (src/).
+# Tout le reste reste local (memory-bank inclus) — jamais supprimé, jamais poussé.
+
+memory-bank/
+research/
+github/
+competitors/
+architecture/
+references/
+assets/
+
+# Système
+.DS_Store
+*.log
+node_modules/
