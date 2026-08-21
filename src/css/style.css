@@ -84,9 +84,22 @@ body {
 }
 
 #map .sphere {
-  fill: rgba(126, 97, 212, 0.04);
   stroke: var(--violet);
   stroke-width: 1;
+}
+
+#map .hud-title {
+  fill: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.18em;
+}
+
+#map .hud-sub {
+  fill: var(--ink-dim);
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 
 #map text {
