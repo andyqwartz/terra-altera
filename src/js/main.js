@@ -70,6 +70,13 @@ function currentCompositeRaw() {
   return currentRaw;
 }
 
+// Clip choreography: the veil opens linearly across the WHOLE morph (v0.3 feel),
+// but caps at 179.999° so we never jump clip->null (that jump flashed a sliver
+// of antimeridian geometry at the end). Sub-pixel loss, invisible.
+function clipForAlpha(a) {
+  return Math.min(179.999, 90 + 90 * a);
+}
+
 /* ---------- Data ---------- */
 let world = null;
 
@@ -117,7 +124,7 @@ function buildProjection() {
   // Globe unroll: interpolate orthographic → current flat raw, refit per frame.
   if (state.alpha < 0.999) {
     const proj = projectionAtT(d3.geoOrthographicRaw, currentCompositeRaw(), state.alpha);
-    proj.clipAngle(90 + 89.9 * state.alpha);
+    proj.clipAngle(clipForAlpha(state.alpha));
     const [lam, phi] = state.rotation;
     proj.rotate([lam, phi, state.roll]);
     return proj;
@@ -311,7 +318,7 @@ function buildStandaloneSVG(scale = 1) {
   let proj;
   if (state.alpha < 0.999) {
     proj = projectionAtT(d3.geoOrthographicRaw, currentCompositeRaw(), state.alpha);
-    proj.clipAngle(90 + 89.9 * state.alpha);
+    proj.clipAngle(clipForAlpha(state.alpha));
   } else {
     const f = fitRaw(currentCompositeRaw());
     proj = d3.geoProjection(currentCompositeRaw())
@@ -474,7 +481,8 @@ document.getElementById("rng-speed").addEventListener("input", (e) => {
 });
 
 document.getElementById("btn-export-svg").addEventListener("click", exportSVG);
-document.querySelectorAll(".exp-btn").forEach((b) =>
+// PNG scale buttons ONLY (class exp-btn with data-png). The SVG button is .wide, no data-png.
+document.querySelectorAll(".exp-btn[data-png]").forEach((b) =>
   b.addEventListener("click", () => exportPNG(+b.dataset.png)));
 
 /* Focus mode */

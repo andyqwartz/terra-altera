@@ -255,7 +255,20 @@ body.focus .brand .tagline { visibility: hidden; }
   white-space: nowrap;
 }
 .exp-btn:hover { border-color: var(--accent); color: var(--accent); }
-.exp-btn.wide { margin-top: 6px; }
+.svg-btn {
+  width: 100%;
+  margin-top: 6px;
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 0.68rem;
+  padding: 7px 0;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.svg-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 .pfoot {
   margin-top: auto;
