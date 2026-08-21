@@ -1,8 +1,8 @@
-/* TERRA ALTERA — design system
-   Two authored themes: "Night Chart" (dark) and "Paper Chart" (light).
-   Layout: reserved grid zones — controls can never overlap the map. */
+/* TERRA ALTERA — design system v1.1
+   Layout: header / stage / panel / morphbar. No left rail.
+   Focus mode hides everything but the centered map. */
 
-/* ---------- Tokens: Night Chart (default) ---------- */
+/* ---------- Tokens: Night Chart ---------- */
 :root, [data-theme="dark"] {
   --bg:          #0d0c15;
   --surface:     #16141f;
@@ -19,7 +19,7 @@
   --shadow:      0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
-/* ---------- Tokens: Paper Chart (authored light, not inverted) ---------- */
+/* ---------- Tokens: Paper Chart ---------- */
 [data-theme="light"] {
   --bg:          #f6f2e9;
   --surface:     #efe9db;
@@ -36,8 +36,6 @@
   --shadow:      0 6px 24px rgba(60, 50, 30, 0.18);
 }
 
-[data-theme="auto"] { /* resolved by JS to dark|light before paint */ }
-
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body { height: 100%; }
@@ -48,16 +46,31 @@ body {
   font-family: "IBM Plex Mono", monospace;
   font-size: 14px;
   display: grid;
-  grid-template-columns: 56px 1fr auto;
+  grid-template-columns: 1fr auto;
   grid-template-rows: auto 1fr auto;
   grid-template-areas:
-    "hdr   hdr   hdr"
-    "rail  stage panel"
-    "morph morph morph";
+    "hdr   hdr"
+    "stage panel"
+    "morph morph";
   height: 100vh;
   overflow: hidden;
   transition: background 0.25s, color 0.25s;
 }
+
+/* ---------- Focus mode: map only, perfectly centered ---------- */
+body.focus {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "hdr"
+    "stage"
+    "morph";
+}
+body.focus .panel { display: none; }
+body.focus .stage { padding: 0; }
+body.focus .hdr { border-bottom-color: transparent; }
+body.focus .hdr-actions > :not(#btn-theme):not(#btn-focus) { display: none; }
+body.focus .brand .tagline { visibility: hidden; }
 
 /* ---------- Header ---------- */
 .hdr {
@@ -83,72 +96,32 @@ body {
   margin-top: 2px;
 }
 
-.hdr-actions { display: flex; align-items: center; gap: 10px; }
+.hdr-actions { display: flex; align-items: center; gap: 8px; }
 
-.seg {
-  display: flex;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.seg-btn {
-  width: 34px; height: 30px;
-  background: transparent;
-  color: var(--ink-dim);
-  border: none;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-.seg-btn + .seg-btn { border-left: 1px solid var(--line); }
-.seg-btn:hover { color: var(--ink); }
-.seg-btn.active { background: var(--accent); color: var(--bg); }
-
-.icon-btn {
-  width: 34px; height: 30px;
-  display: none;
-  place-items: center;
-  background: transparent;
-  color: var(--ink-dim);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-/* ---------- Left rail ---------- */
-.rail {
-  grid-area: rail;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 14px 0;
-  border-right: 1px solid var(--line);
-}
-
-.rail-btn {
-  width: 38px; height: 38px;
+.ghost-btn {
+  width: 32px; height: 30px;
   display: grid;
   place-items: center;
   background: transparent;
   color: var(--ink-dim);
-  border: 1px solid transparent;
-  border-radius: 9px;
+  border: none;
+  border-radius: 7px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  font-size: 0.9rem;
+  transition: color 0.15s, background 0.15s;
 }
-.rail-btn:hover { color: var(--ink); border-color: var(--line); }
-.rail-btn.active { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.rail-sep { width: 22px; height: 1px; background: var(--line); margin: 6px 0; }
+.ghost-btn:hover { color: var(--ink); background: var(--surface-2); }
+.only-mobile { display: none !important; }
 
-/* ---------- Stage (map owns its cell entirely) ---------- */
+/* ---------- Stage ---------- */
 .stage {
   grid-area: stage;
   min-width: 0;
   min-height: 0;
-  position: relative;
   display: grid;
   place-items: center;
-  padding: 8px;
+  padding: 10px 18px;
+  overflow: hidden;
 }
 
 #map { width: 100%; height: 100%; cursor: grab; }
@@ -160,9 +133,7 @@ body {
   stroke-width: 0.6;
 }
 #map .country.noborder { stroke: none; }
-
 #map .graticule { fill: none; stroke: var(--graticule); stroke-width: 0.5; }
-
 #map .sphere { stroke: var(--accent); stroke-width: 1; }
 
 #map .hud-title {
@@ -179,20 +150,23 @@ body {
   font-size: 12.5px;
 }
 
-/* ---------- Right panel ---------- */
+/* ---------- Panel ---------- */
 .panel {
   grid-area: panel;
-  width: 264px;
+  width: 258px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 18px 18px 12px;
+  gap: 17px;
+  padding: 18px;
   border-left: 1px solid var(--line);
   overflow-y: auto;
+  overflow-x: hidden;
   background: var(--surface);
 }
 
-.pgroup { display: flex; flex-direction: column; gap: 9px; }
+.pgroup { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+
+.ptitle-row { display: flex; align-items: center; justify-content: space-between; }
 
 .ptitle {
   font-size: 0.62rem;
@@ -202,7 +176,20 @@ body {
   font-weight: 500;
 }
 
+.mini-btn {
+  width: 22px; height: 22px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mini-btn:hover { color: var(--accent); border-color: var(--accent); }
+
 .psel {
+  width: 100%;
   background: var(--surface-2);
   color: var(--ink);
   border: 1px solid var(--line);
@@ -215,10 +202,8 @@ body {
 .psel:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .pkind { font-size: 0.68rem; color: var(--ink-dim); line-height: 1.5; }
-
 .phint { font-size: 0.64rem; color: var(--ink-dim); line-height: 1.5; }
 
-/* Switches */
 .switch {
   display: flex;
   align-items: center;
@@ -250,13 +235,11 @@ body {
 .switch input:checked + .track::after { transform: translateX(13px); background: #fff; }
 .switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* Slider row */
 .slider-row { display: flex; align-items: center; gap: 9px; font-size: 0.72rem; }
 .slbl { color: var(--ink-dim); white-space: nowrap; }
 .sval { min-width: 26px; text-align: right; }
-#rng-speed { flex: 1; accent-color: var(--accent); }
+#rng-speed { flex: 1; accent-color: var(--accent); min-width: 0; }
 
-/* Export buttons */
 .exp-row { display: flex; gap: 6px; }
 .exp-btn {
   flex: 1;
@@ -269,8 +252,10 @@ body {
   padding: 7px 0;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
 }
 .exp-btn:hover { border-color: var(--accent); color: var(--accent); }
+.exp-btn.wide { margin-top: 6px; }
 
 .pfoot {
   margin-top: auto;
@@ -293,11 +278,7 @@ body {
   padding: 10px 24px 14px;
 }
 
-.morph-label {
-  font-size: 0.6rem;
-  letter-spacing: 0.2em;
-  color: var(--ink-dim);
-}
+.morph-label { font-size: 0.6rem; letter-spacing: 0.2em; color: var(--ink-dim); }
 
 #morph-slider {
   -webkit-appearance: none;
@@ -426,20 +407,16 @@ body {
 }
 .toast[hidden] { display: none; }
 
-/* ---------- Focus visibility ---------- */
 button:focus-visible, select:focus-visible, input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
 
 /* ---------- Responsive ---------- */
-.only-mobile { display: none !important; }
-
 @media (max-width: 900px) {
   body {
     grid-template-columns: 1fr;
@@ -450,23 +427,12 @@ button:focus-visible, select:focus-visible, input:focus-visible {
       "morph"
       "panel";
   }
+  body.focus { grid-template-rows: auto 1fr auto; grid-template-areas: "hdr" "stage" "morph"; }
   .panel {
     width: 100%;
     max-height: 34vh;
     border-left: none;
     border-top: 1px solid var(--line);
-  }
-  .rail {
-    position: fixed;
-    top: 74px;
-    left: 10px;
-    z-index: 500;
-    flex-direction: column;
-    padding: 6px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 11px;
-    box-shadow: var(--shadow);
   }
   .only-mobile { display: grid !important; }
   .pfoot { display: none; }

@@ -1,8 +1,8 @@
-/* TERRA ALTERA — engine.
-   Morphing core adapted verbatim from @d3/projection-transitions
-   (https://observablehq.com/@d3/projection-transitions, ISC).
-   Globe unrolling: clipAngle choreography 90°→180°.
-   South-up: rigid roll γ=180. */
+/* TERRA ALTERA — engine v1.1.
+   Morphing core adapted verbatim from @d3/projection-transitions (ISC).
+   Anti-oscillation: the morph re-fits scale/translate EVERY frame to the
+   interpolated raw, so the map stays composed at every t (no drift/swing).
+   Export: standalone SVG document built from scratch (no DOM cloning). */
 
 "use strict";
 
@@ -14,13 +14,14 @@ const DEG = Math.PI / 180;
 const state = {
   alpha: 0,
   rotation: [0, -10],
-  roll: 0,               // 180 = south up
+  roll: 0,
   graticule: true,
   borders: true,
   autoRotate: true,
   speed: 1,
   animating: false,
   blending: false,
+  focus: false,
 };
 
 const RAW = {
@@ -34,7 +35,7 @@ const RAW = {
 let currentProjKey = "equalEarth";
 let currentRaw = RAW.equalEarth();
 
-/* ---------- Proven core (@d3/projection-transitions) ---------- */
+/* ---------- Proven core + per-frame fit ---------- */
 const lerp1 = (a, b, t) => a * (1 - t) + b * t;
 const lerp2 = ([a0, b0], [a1, b1], t) => [a0 + (a1 - a0) * t, b0 + (b1 - b0) * t];
 
@@ -46,14 +47,27 @@ function fitRaw(raw) {
   return { scale: p.scale(), translate: p.translate() };
 }
 
-function interpolateProjection(raw0, raw1) {
-  const f0 = fitRaw(raw0);
-  const f1 = fitRaw(raw1);
-  return (t) =>
-    d3.geoProjection((x, y) => lerp2(raw0(x, y), raw1(x, y), t))
-      .scale(lerp1(f0.scale, f1.scale, t))
-      .translate(lerp2(f0.translate, f1.translate, t))
-      .precision(0.2);
+// Composite raw for a given morph t.
+function morphedRaw(raw0, raw1, t) {
+  return (x, y) => {
+    const [x0, y0] = raw0(x, y);
+    const [x1, y1] = raw1(x, y);
+    return [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t];
+  };
+}
+
+// Re-fits the CURRENT composite shape every call → no oscillation.
+function projectionAtT(raw0, raw1, t) {
+  const fitted = fitRaw(morphedRaw(raw0, raw1, t));
+  return d3.geoProjection(morphedRaw(raw0, raw1, t))
+    .scale(fitted.scale)
+    .translate(fitted.translate)
+    .precision(0.2);
+}
+
+function currentCompositeRaw() {
+  // During crossfade, currentRaw is already a composite closure; otherwise identity.
+  return currentRaw;
 }
 
 /* ---------- Data ---------- */
@@ -68,7 +82,7 @@ async function loadWorld() {
     render();
   } catch (err) {
     console.error("Failed to load world data:", err);
-    toast("World data failed to load — check data/countries-110m.json");
+    toast("World data failed to load");
   }
 }
 
@@ -80,19 +94,38 @@ const oceanGrad = defs.append("radialGradient")
 oceanGrad.append("stop").attr("offset", "0%").attr("class", "oc-a");
 oceanGrad.append("stop").attr("offset", "100%").attr("class", "oc-b");
 
-// Theme-aware ocean stops via CSS variables on the gradient stops.
-function paintOceanStops() {
+function themeColors() {
   const cs = getComputedStyle(document.documentElement);
-  oceanGrad.select(".oc-a").attr("stop-color", cs.getPropertyValue("--ocean-a").trim());
-  oceanGrad.select(".oc-b").attr("stop-color", cs.getPropertyValue("--ocean-b").trim());
+  const get = (n) => cs.getPropertyValue(n).trim();
+  return {
+    bg: get("--bg"), oceanA: get("--ocean-a"), oceanB: get("--ocean-b"),
+    landFill: get("--land-fill"), landStroke: get("--land-stroke"),
+    accent: get("--accent"), ink: get("--ink"), inkDim: get("--ink-dim"),
+    graticule: get("--graticule"),
+  };
+}
+
+function paintOceanStops() {
+  const c = themeColors();
+  oceanGrad.select(".oc-a").attr("stop-color", c.oceanA);
+  oceanGrad.select(".oc-b").attr("stop-color", c.oceanB);
 }
 
 const gMap = svg.append("g").attr("class", "map-root");
 
 function buildProjection() {
-  const proj = interpolateProjection(d3.geoOrthographicRaw, currentRaw)(state.alpha);
-  if (state.alpha >= 0.999) proj.clipAngle(null);
-  else proj.clipAngle(90 + 89.9 * state.alpha);
+  // Globe unroll: interpolate orthographic → current flat raw, refit per frame.
+  if (state.alpha < 0.999) {
+    const proj = projectionAtT(d3.geoOrthographicRaw, currentCompositeRaw(), state.alpha);
+    proj.clipAngle(90 + 89.9 * state.alpha);
+    const [lam, phi] = state.rotation;
+    proj.rotate([lam, phi, state.roll]);
+    return proj;
+  }
+  // Flat: plain projection of the current raw, freshly fitted.
+  const fitted = fitRaw(currentCompositeRaw());
+  const proj = d3.geoProjection(currentCompositeRaw())
+    .scale(fitted.scale).translate(fitted.translate).precision(0.2);
   const [lam, phi] = state.rotation;
   proj.rotate([lam, phi, state.roll]);
   return proj;
@@ -100,6 +133,8 @@ function buildProjection() {
 
 function render() {
   if (!world) return;
+  const c = themeColors();
+  paintOceanStops();
   const proj = buildProjection();
   const path = d3.geoPath(proj);
 
@@ -109,12 +144,17 @@ function render() {
     .datum({ type: "Sphere" })
     .attr("class", "sphere")
     .attr("fill", "url(#ocean)")
+    .attr("stroke", c.accent)
+    .attr("stroke-width", 1)
     .attr("d", path);
 
   if (state.graticule) {
     gMap.append("path")
       .datum(d3.geoGraticule10())
       .attr("class", "graticule")
+      .attr("stroke", c.graticule)
+      .attr("fill", "none")
+      .attr("stroke-width", 0.5)
       .attr("d", path);
   }
 
@@ -122,17 +162,21 @@ function render() {
     .selectAll("path")
     .data(world.countries)
     .join("path")
-    .attr("class", (d) => "country" + (state.borders ? "" : " noborder"))
+    .attr("fill", c.landFill)
+    .attr("stroke", state.borders ? c.landStroke : "none")
+    .attr("stroke-width", 0.6)
     .attr("d", (d) => safePath(path, d));
 
   const info = PROJECTION_INFO[currentProjKey];
   gMap.append("text")
     .attr("x", 18).attr("y", HEIGHT - 42)
     .attr("class", "hud-title")
+    .attr("fill", c.ink)
     .text(info.label.toUpperCase());
   gMap.append("text")
     .attr("x", 18).attr("y", HEIGHT - 22)
     .attr("class", "hud-sub")
+    .attr("fill", c.inkDim)
     .text(info.kind + (state.roll === 180 ? " · SOUTH↑" : ""));
 }
 
@@ -175,7 +219,7 @@ function animateMorph(targetAlpha) {
     const t = Math.min((now - t0) / duration, 1);
     state.alpha = start + delta * EASE(t);
     slider.value = Math.round(state.alpha * 100);
-    render();
+    render(); // buildProjection re-fits every frame
     if (t < 1) requestAnimationFrame(frame);
     else { state.animating = false; playBtn.disabled = false; syncURL(); }
   }
@@ -184,7 +228,7 @@ function animateMorph(targetAlpha) {
 
 function crossfadeTo(key) {
   if (key === currentProjKey || state.blending) return;
-  const fromRaw = currentRaw;
+  const fromRaw = currentCompositeRaw();
   const toRaw = RAW[key]();
   const frames = reducedMotion() ? 1 : 45;
   let j = 0;
@@ -193,11 +237,7 @@ function crossfadeTo(key) {
   function step() {
     j += 1;
     const e = EASE(Math.min(j / frames, 1));
-    currentRaw = (x, y) => {
-      const [x0, y0] = fromRaw(x, y);
-      const [x1, y1] = toRaw(x, y);
-      return [x0 + (x1 - x0) * e, y0 + (y1 - y0) * e];
-    };
+    currentRaw = morphedRaw(fromRaw, toRaw, e);
     render();
     if (j < frames) requestAnimationFrame(step);
     else {
@@ -214,7 +254,7 @@ function crossfadeTo(key) {
 /* Idle rotation */
 let idleUntil = 0;
 function kickIdle() { idleUntil = performance.now() + 4000; }
-function autoRotate(ts) {
+function autoRotate() {
   if (state.autoRotate && !reducedMotion() &&
       performance.now() > idleUntil && !state.animating && !dragging && state.alpha < 0.4) {
     state.rotation[0] += 0.06;
@@ -258,66 +298,100 @@ function toast(msg) {
   toastTimer = setTimeout(() => { el.hidden = true; }, 2400);
 }
 
-/* ---------- Export ---------- */
+/* ================================================================
+   EXPORT — standalone SVG document built from scratch.
+   No cloning of the live DOM: fresh geometry, inline styles only.
+   ================================================================ */
+
+function buildStandaloneSVG(scale = 1) {
+  const c = themeColors();
+  const W = WIDTH * scale, H = HEIGHT * scale;
+
+  // Fresh projection fitted to export dimensions.
+  let proj;
+  if (state.alpha < 0.999) {
+    proj = projectionAtT(d3.geoOrthographicRaw, currentCompositeRaw(), state.alpha);
+    proj.clipAngle(90 + 89.9 * state.alpha);
+  } else {
+    const f = fitRaw(currentCompositeRaw());
+    proj = d3.geoProjection(currentCompositeRaw())
+      .scale(f.scale).translate(f.translate).precision(0.2);
+  }
+  const [lam, phi] = state.rotation;
+  proj.rotate([lam, phi, state.roll]);
+
+  // Scale translate for export size (fit was computed at base size).
+  const tr = proj.translate();
+  proj.translate([tr[0] * scale, tr[1] * scale]);
+  proj.scale(proj.scale() * scale);
+
+  const path = d3.geoPath(proj);
+  const parts = [];
+
+  parts.push(
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
+    `<defs><radialGradient id="ocean" cx="50%" cy="42%" r="75%">`,
+    `<stop offset="0%" stop-color="${c.oceanA}"/>`,
+    `<stop offset="100%" stop-color="${c.oceanB}"/>`,
+    `</radialGradient></defs>`,
+    `<rect width="${W}" height="${H}" fill="${c.bg}"/>`
+  );
+
+  parts.push(`<path fill="url(#ocean)" stroke="${c.accent}" stroke-width="${1 * scale}" d="${path({ type: "Sphere" }) || ""}"/>`);
+
+  if (state.graticule) {
+    parts.push(`<path fill="none" stroke="${c.graticule}" stroke-width="${0.5 * scale}" d="${path(d3.geoGraticule10()) || ""}"/>`);
+  }
+
+  for (const country of world.countries) {
+    const d = safePath(path, country);
+    if (d) parts.push(`<path fill="${c.landFill}" stroke="${state.borders ? c.landStroke : "none"}" stroke-width="${0.6 * scale}" d="${d}"/>`);
+  }
+
+  const info = PROJECTION_INFO[currentProjKey];
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  parts.push(
+    `<text x="${18 * scale}" y="${(HEIGHT - 42) * scale}" font-family="Syne, sans-serif" font-weight="800" font-size="${21 * scale}" letter-spacing="${0.18 * 21 * scale}" fill="${c.ink}">${esc(info.label.toUpperCase())}</text>`,
+    `<text x="${18 * scale}" y="${(HEIGHT - 22) * scale}" font-family="Georgia, serif" font-style="italic" font-size="${12.5 * scale}" fill="${c.inkDim}">${esc(info.kind + (state.roll === 180 ? " · SOUTH\u2191" : ""))}</text>`,
+    `</svg>`
+  );
+
+  return parts.join("\n");
+}
+
 function exportSVG() {
-  paintOceanStops();
-  const clone = svg.node().cloneNode(true);
-  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-  clone.insertBefore(clone.querySelector("defs"), clone.firstChild);
-  // Inline theme colors for fills/strokes that come from CSS.
-  const cs = getComputedStyle(document.documentElement);
-  clone.querySelectorAll(".country").forEach((el) => {
-    el.style.fill = cs.getPropertyValue("--land-fill").trim();
-    el.style.stroke = state.borders ? cs.getPropertyValue("--land-stroke").trim() : "none";
-  });
-  clone.querySelectorAll(".graticule").forEach((el) => {
-    el.style.stroke = cs.getPropertyValue("--graticule").trim();
-  });
-  clone.querySelector(".sphere").style.stroke = cs.getPropertyValue("--accent").trim();
-  const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: "image/svg+xml" });
-  downloadBlob(blob, exportName("svg"));
+  const xml = buildStandaloneSVG(1);
+  downloadBlob(new Blob([xml], { type: "image/svg+xml" }), exportName("svg"));
   toast("SVG exported");
 }
 
 async function exportPNG(scale) {
-  paintOceanStops();
-  const cs = getComputedStyle(document.documentElement);
-  const clone = svg.node().cloneNode(true);
-  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-  clone.setAttribute("width", WIDTH * scale);
-  clone.setAttribute("height", HEIGHT * scale);
-  clone.insertBefore(clone.querySelector("defs"), clone.firstChild);
-  clone.querySelectorAll(".country").forEach((el) => {
-    el.style.fill = cs.getPropertyValue("--land-fill").trim();
-    el.style.stroke = state.borders ? cs.getPropertyValue("--land-stroke").trim() : "none";
-  });
-  clone.querySelectorAll(".graticule").forEach((el) => {
-    el.style.stroke = cs.getPropertyValue("--graticule").trim();
-  });
-  clone.querySelector(".sphere").style.stroke = cs.getPropertyValue("--accent").trim();
-  // Opaque background in theme color (PNG for sharing/print).
-  const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  bgRect.setAttribute("width", "100%"); bgRect.setAttribute("height", "100%");
-  bgRect.style.fill = cs.getPropertyValue("--bg").trim();
-  clone.insertBefore(bgRect, clone.firstChild);
-
-  const xml = new XMLSerializer().serializeToString(clone);
-  const url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml" }));
-  const img = new Image();
-  await new Promise((resolve, reject) => {
-    img.onload = resolve;
-    img.onerror = reject;
-    img.src = url;
-  });
-  const canvas = document.createElement("canvas");
-  canvas.width = WIDTH * scale;
-  canvas.height = HEIGHT * scale;
-  canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-  URL.revokeObjectURL(url);
-  canvas.toBlob((blob) => {
-    downloadBlob(blob, exportName("png"));
-    toast(`PNG exported at ${scale}×`);
-  }, "image/png");
+  try {
+    const xml = buildStandaloneSVG(scale);
+    const url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error("SVG rasterization failed"));
+      img.src = url;
+    });
+    // Use intrinsic size when available (Firefox needs explicit canvas dims).
+    const canvas = document.createElement("canvas");
+    canvas.width = WIDTH * scale;
+    canvas.height = HEIGHT * scale;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob((blob) => {
+      if (!blob) { toast("PNG export failed"); return; }
+      downloadBlob(blob, exportName("png"));
+      toast(`PNG exported at ${scale}\u00D7`);
+    }, "image/png");
+  } catch (err) {
+    console.error(err);
+    toast("PNG export failed");
+  }
 }
 
 function exportName(ext) {
@@ -329,7 +403,7 @@ function downloadBlob(blob, name) {
   a.href = URL.createObjectURL(blob);
   a.download = name;
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 
 /* ---------- Info modal ---------- */
@@ -353,7 +427,7 @@ document.getElementById("btn-info").addEventListener("click", openInfo);
 document.getElementById("modal-close").addEventListener("click", closeInfo);
 backdrop.addEventListener("click", (e) => { if (e.target === backdrop) closeInfo(); });
 
-/* ---------- Controls wiring ---------- */
+/* ---------- Controls ---------- */
 const slider = document.getElementById("morph-slider");
 const playBtn = document.getElementById("btn-play");
 
@@ -372,24 +446,16 @@ document.getElementById("proj-select").addEventListener("change", (ev) => crossf
 function setSouth(on) {
   state.roll = on ? 180 : 0;
   document.getElementById("sw-south").checked = on;
-  const b = document.getElementById("btn-southup");
-  b.classList.toggle("active", on);
-  b.setAttribute("aria-pressed", String(on));
   render();
   syncURL();
 }
-document.getElementById("btn-southup").addEventListener("click", () => setSouth(state.roll !== 180));
 document.getElementById("sw-south").addEventListener("change", (e) => setSouth(e.target.checked));
 
 function setGraticule(on) {
   state.graticule = on;
   document.getElementById("sw-graticule").checked = on;
-  const b = document.getElementById("btn-graticule");
-  b.classList.toggle("active", on);
-  b.setAttribute("aria-pressed", String(on));
   render();
 }
-document.getElementById("btn-graticule").addEventListener("click", () => setGraticule(!state.graticule));
 document.getElementById("sw-graticule").addEventListener("change", (e) => setGraticule(e.target.checked));
 
 document.getElementById("sw-borders").addEventListener("change", (e) => {
@@ -404,15 +470,22 @@ document.getElementById("sw-autorotate").addEventListener("change", (e) => {
 
 document.getElementById("rng-speed").addEventListener("input", (e) => {
   state.speed = +e.target.value;
-  document.getElementById("speed-val").textContent = `${state.speed}×`;
+  document.getElementById("speed-val").textContent = `${state.speed}\u00D7`;
 });
 
 document.getElementById("btn-export-svg").addEventListener("click", exportSVG);
-document.getElementById("btn-export-png").addEventListener("click", () => exportPNG(2));
 document.querySelectorAll(".exp-btn").forEach((b) =>
   b.addEventListener("click", () => exportPNG(+b.dataset.png)));
 
-/* Mobile panel toggle */
+/* Focus mode */
+document.getElementById("btn-focus").addEventListener("click", toggleFocus);
+function toggleFocus() {
+  state.focus = !state.focus;
+  document.body.classList.toggle("focus", state.focus);
+  document.getElementById("btn-focus").classList.toggle("active", state.focus);
+}
+
+/* Mobile panel */
 document.getElementById("btn-panel").addEventListener("click", () => {
   const p = document.getElementById("panel");
   const open = p.style.display !== "none";
@@ -429,6 +502,8 @@ d3.select(window).on("keydown", (ev) => {
     case "s": setSouth(state.roll !== 180); break;
     case "g": setGraticule(!state.graticule); break;
     case "i": openInfo(); break;
+    case "f": toggleFocus(); break;
+    case "t": document.getElementById("btn-theme").click(); break;
     case "e": exportSVG(); break;
     case "p": exportPNG(2); break;
   }
@@ -454,7 +529,10 @@ function restoreURL() {
     document.getElementById("proj-select").value = proj;
   }
   if (p.get("alpha")) state.alpha = Math.min(1, Math.max(0, +p.get("alpha")));
-  if (p.get("south") === "1") setSouth(true);
+  if (p.get("south") === "1") {
+    state.roll = 180;
+    document.getElementById("sw-south").checked = true;
+  }
   if (p.get("borders") === "0") {
     state.borders = false;
     document.getElementById("sw-borders").checked = false;

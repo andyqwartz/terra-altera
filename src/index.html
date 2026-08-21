@@ -19,48 +19,19 @@
     <p class="tagline">unfold the world // shift the gaze</p>
   </div>
   <div class="hdr-actions">
-    <div class="seg" role="radiogroup" aria-label="Theme">
-      <button class="seg-btn" data-theme-choice="dark"    title="Night chart">◐</button>
-      <button class="seg-btn" data-theme-choice="light"   title="Paper chart">◑</button>
-      <button class="seg-btn" data-theme-choice="auto"    title="Follow system">A</button>
-    </div>
-    <button id="btn-panel" class="icon-btn only-mobile" title="Settings" aria-expanded="false">
-      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5">
+    <button id="btn-theme" class="ghost-btn" title="Toggle theme (T)" aria-label="Toggle theme">◐</button>
+    <button id="btn-focus" class="ghost-btn" title="Focus mode — map only (F)" aria-label="Focus mode">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M1 5V1h4M14 5V1h-4M1 10v4h4M14 10v4h-4"/>
+      </svg>
+    </button>
+    <button id="btn-panel" class="ghost-btn only-mobile" title="Settings" aria-expanded="false">
+      <svg width="15" height="15" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M2 4.5h13M2 8.5h13M2 12.5h13"/>
       </svg>
     </button>
   </div>
 </header>
-
-<!-- Left rail: primary actions -->
-<nav class="rail" aria-label="Map actions">
-  <button id="btn-info" class="rail-btn" title="About this projection (I)">
-    <svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5">
-      <circle cx="8.5" cy="8.5" r="6.5"/><path d="M8.5 7.6v4"/><circle cx="8.5" cy="5.2" r=".9" fill="currentColor" stroke="none"/>
-    </svg>
-  </button>
-  <button id="btn-graticule" class="rail-btn active" title="Graticule (G)" aria-pressed="true">
-    <svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.2">
-      <circle cx="8.5" cy="8.5" r="6.5"/><ellipse cx="8.5" cy="8.5" rx="3" ry="6.5"/><path d="M2 8.5h13M3.2 5h10.6M3.2 12h10.6"/>
-    </svg>
-  </button>
-  <button id="btn-southup" class="rail-btn" title="South up (S)" aria-pressed="false">
-    <svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5">
-      <circle cx="8.5" cy="8.5" r="6.5"/><path d="M8.5 2v13M5.5 5l3-3 3 3"/>
-    </svg>
-  </button>
-  <div class="rail-sep"></div>
-  <button id="btn-export-svg" class="rail-btn" title="Export SVG (E)">
-    <svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5">
-      <path d="M8.5 2.5v8m0 0l-3.2-3.2M8.5 10.5l3.2-3.2M2.5 14h12"/>
-    </svg>
-  </button>
-  <button id="btn-export-png" class="rail-btn" title="Export PNG 2× (P)">
-    <svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5">
-      <rect x="2.5" y="2.5" width="12" height="12" rx="1.5"/><circle cx="6.2" cy="6.2" r="1.3"/><path d="M2.5 12l3.5-3.5 2.5 2.5 3-3 3 3"/>
-    </svg>
-  </button>
-</nav>
 
 <!-- Map -->
 <main class="stage">
@@ -68,10 +39,17 @@
        role="img" aria-label="Interactive world map"></svg>
 </main>
 
-<!-- Right panel -->
+<!-- Right panel: everything lives here -->
 <aside class="panel" id="panel" aria-label="Settings">
   <section class="pgroup">
-    <h2 class="ptitle">Projection</h2>
+    <div class="ptitle-row">
+      <h2 class="ptitle">Projection</h2>
+      <button id="btn-info" class="mini-btn" title="About this projection (I)" aria-label="About this projection">
+        <svg width="13" height="13" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.6">
+          <circle cx="8.5" cy="8.5" r="6.5"/><path d="M8.5 7.6v4"/><circle cx="8.5" cy="5.2" r=".9" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
+    </div>
     <select id="proj-select" class="psel" aria-label="Projection">
       <option value="equalEarth">Equal Earth</option>
       <option value="hoboDyer">Hobo-Dyer · 37.5°</option>
@@ -93,7 +71,7 @@
     <h2 class="ptitle">Motion</h2>
     <label class="switch"><input type="checkbox" id="sw-autorotate" checked><span class="track"></span>Idle rotation</label>
     <div class="slider-row">
-      <span class="slbl">Morph speed</span>
+      <span class="slbl">Speed</span>
       <input type="range" id="rng-speed" min="0.5" max="3" step="0.25" value="1">
       <span id="speed-val" class="sval">1×</span>
     </div>
@@ -106,7 +84,8 @@
       <button class="exp-btn" data-png="2">PNG 2×</button>
       <button class="exp-btn" data-png="4">PNG 4×</button>
     </div>
-    <p class="phint">Vector SVG via the rail · PNG raster at chosen scale</p>
+    <button id="btn-export-svg" class="exp-btn wide">Download vector SVG</button>
+    <p class="phint">Exports render a standalone document in the current theme.</p>
   </section>
 
   <footer class="pfoot">
