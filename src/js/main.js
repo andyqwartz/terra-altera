@@ -25,11 +25,35 @@ const state = {
   focus: false,
 };
 
+// Bertin 1953 raw: a modified Briesemeister (Hammer-based, unrotated form).
+// Ported from d3-geo-projection's bertin.js so the morph engine can use it
+// as a plain raw (the official factory bakes in a fixed rotate/center).
+function bertin1953Raw() {
+  const hammer = d3.geoHammerRaw(1.68, 2);
+  const fu = 1.4, k = 12;
+  function forward(lambda, phi) {
+    if (lambda + phi < -fu) {
+      const u = (lambda - phi + 1.6) * (lambda + phi + fu) / 8;
+      lambda += u;
+      phi -= 0.8 * u * Math.sin(phi + Math.PI / 2);
+    }
+    const r = hammer(lambda, phi);
+    const dd = (1 - Math.cos(lambda * phi)) / k;
+    if (r[1] < 0) r[0] *= 1 + dd;
+    if (r[1] > 0) r[1] *= 1 + (dd / 1.5) * r[0] * r[0];
+    return r;
+  }
+  return forward;
+}
+
 const RAW = {
   equalEarth:      () => d3.geoEqualEarthRaw,
   hoboDyer:        () => d3.geoCylindricalEqualAreaRaw(37.5 * DEG),
   gallPeters:      () => d3.geoCylindricalEqualAreaRaw(45 * DEG),
   equirectangular: () => d3.geoEquirectangularRaw,
+  hammer:          () => d3.geoHammerRaw(2, 2),   // classic Hammer (A=2, B=2): the equal-area ellipse
+  sinusoidal:      () => d3.geoSinusoidalRaw,
+  bertin1953:      () => bertin1953Raw(),
   authaGraph:      () => d3.geoImagoRaw(0.68),
 };
 
