@@ -14,4 +14,3 @@ assets/
 .DS_Store
 *.log
 node_modules/
-tests/morph/node_modules
