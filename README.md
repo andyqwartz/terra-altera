@@ -6,7 +6,7 @@
 An interactive atlas that unfolds a sphere into five different truths.
 Drag it. Flip it. Watch the world unroll.
 
-**Live:** `https://andyqwartz.github.io/SERENDIPPO-DECOLONIAL-MAPS/` *(once Pages is on)*
+**Live:** [andyqwartz.github.io/terra-altera](https://andyqwartz.github.io/terra-altera/)
 
 ---
 
@@ -55,9 +55,9 @@ method, twelve steps, no closed form.
 
 Mick Dyer, 2002
 
-A cylindrical equal-area with standard parallel $\varphi_1 = 37.5°$.
-Printed south-up since birth — the map that refuses to introduce the world
-from above.
+A cylindrical equal-area projection with standard parallel $\varphi_1 = 37.5°$.
+Printed south-up from its first edition — the map that refuses to introduce
+the world from above.
 
 $$
 x = \lambda\cos\varphi_1, \qquad y = \frac{\sin\varphi}{\cos\varphi_1}
@@ -76,16 +76,15 @@ of ink.
 James Gall, 1885 · Arno Peters, 1973
 
 Same cylinder, steeper wall: standard parallel $\varphi_1 = 45°$. Peters
-re-presented Gall's quiet projection as an instrument of development
-geography, and cartography never forgave him for the noise — or forgot the
-point.
+presented Gall's quiet projection as an instrument of development geography,
+and cartography never forgave the noise — nor forgot the point.
 
 $$
 x = \lambda\cos 45°, \qquad y = \sqrt{2}\,\sin\varphi
 $$
 
-The vertical stretch factor against Mercator's equator-hugging compression:
-$\sqrt{2}\,/\!\cos\varphi_1 \cdot \cos\varphi$ — Africa stands tall here.
+The vertical stretch relative to Mercator's equator-hugging compression is
+$\sqrt{2}\cos\varphi$ — Africa stands tall here.
 
 *What it shows:* the Global South at full height. *What it hides:* graceful
 proportions.
@@ -97,8 +96,7 @@ proportions.
 Marinus of Tyre, c. 100 AD
 
 No ideology, no correction: every degree is a square. The plate carrée —
-the machine's native flat Earth, and the morph target this atlas unrolls
-into.
+the machine's native flat Earth, and the target this atlas unrolls into.
 
 $$
 x = \lambda, \qquad y = \varphi
@@ -116,8 +114,9 @@ apologize.
 
 Hajime Narukawa, 1999 · open approximation: J. Kunimune's IMAGO, 2017
 
-Projected onto a tetrahedron, then unfolded into a rectangle that can tile
-the plane infinitely — any point can be the center. Areas hold within ~1%.
+Projected onto a tetrahedron, then unfolded into a shape that tiles the
+plane infinitely — any point on Earth can sit at the center. Areas hold
+within about one percent.
 
 The mapping passes through Lee's tetrahedral machinery:
 
@@ -127,8 +126,8 @@ $$
 f_{\text{Lee}}: \text{sphere} \to \text{tetra} \to \mathbb{R}^2
 $$
 
-solved numerically (Newton–Raphson on the inverse). This build uses
-Kunimune's IMAGO equations at $k = 0.68$ — the closest open form of
+solved numerically, by Newton–Raphson iteration on the inverse. This build
+uses Kunimune's IMAGO equations at $k = 0.68$ — the closest open form of
 Narukawa's still-patented original.
 
 *What it shows:* a world without a fixed top. *What it hides:* the original
@@ -140,7 +139,8 @@ equations — they were never published.
 
 The transition is not a crossfade. It is a genuine geometric interpolation:
 at every frame $t \in [0,1]$, the projected position is the linear blend of
-two projection functions, refitted so the composition never drifts,
+two projection functions, refitted at each frame so the composition never
+drifts,
 
 $$
 P_t(\lambda, \varphi) = (1-t)\,P_{\text{ortho}}(\lambda, \varphi) + t\,P_{\text{target}}(\lambda, \varphi)
@@ -153,7 +153,7 @@ $$
 $$
 
 so the far hemisphere swings into view exactly as fast as the sphere
-flattens. South-up is a rigid roll: $\gamma = 180°$.
+flattens. South-up is a rigid half-turn: $\gamma = 180°$.
 
 ---
 
@@ -169,7 +169,8 @@ flattens. South-up is a rigid roll: $\gamma = 180°$.
 | `T` | night ↔ paper |
 | `F` | focus — the map alone |
 
-Exports render the current view, current theme, current truth.
+Exports render the current view, in the current theme, under the current
+truth.
 
 ---
 
